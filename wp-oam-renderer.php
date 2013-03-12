@@ -1,17 +1,14 @@
 <?php
 /*
-Plugin Name: wp-oam-renderer (Wordpress OAM Renderer)
+Plugin Name: WP OAM Renderer
 Plugin URI: https://github.com/ekino/wp-oam-renderer
 Description: Adds .oam / Adobe Edge Animate support in Media Library + front-office rendering using a dedicated shortcode
-Authors: Thomas VIAL, Loïc CALVY
-Company:  Ekino
+Author: Ekino
 Author URI: http://www.ekino.com
-Version: 0.1
+Version: 0.2
 
 TODO:
 - move from exec("unzip") to a cross platform solution
-- add OAM icon in MediaLib (need wp_get_attachment_image hook)
-- add OAM preview in MediaLib
 - refator code...
 */
 
@@ -20,38 +17,39 @@ TODO:
  * Allow upload for .oam files
  */
 
-add_filter('upload_mimes', 'addUploadMimes');
-function addUploadMimes($mimes) {
+add_filter('upload_mimes', 'wpoamr_upload_mimes');
+function wpoamr_upload_mimes($mimes) {
   $mimes = array_merge($mimes, array(
       'oam' => 'application/octet-stream'
   ));
   return $mimes;
 }
 
+
 /*
- * Set icon to OAM files
- * Hook is missing in wordpress core... waiting for v3.6?
- * This part is Work In Progress
+ * Displays icon from 'Poster.png' to OAM files
+ * Only works in "Media > Library", not in "Post > Edit > Add Media"
  */
 
-// add_filter('wp_get_attachment_image', 'oam_icon_change');
-// function oam_icon_change($post) {
-//   $file = get_attached_file($post->ID);
-//   $ext = pathinfo($file, PATHINFO_EXTENSION);
-//   var_dump($post->ID);
-//   if ($ext == 'oam') {
-//     $icon = str_replace(get_bloginfo('wpurl').'/wp-includes/images/crystal/', WP_CONTENT_URL . '/plugins/wordpress-oam-renderer/', $icon);
-//   }
-//   return $icon;
-// }
+add_filter('wp_get_attachment_image_attributes', 'wpoamr_wp_get_attachment_image_attributes', 10, 2);
+function wpoamr_wp_get_attachment_image_attributes($attr, $attachment = null) {
+  $ext        = pathinfo($attachment->guid, PATHINFO_EXTENSION);
+  $pathinfo   = pathinfo($attachment->guid);
+  $item       = $pathinfo['filename'];
+  $path       = $pathinfo['dirname'];
+  if ($ext == 'oam') {
+    $attr['src'] = $path.'/'.$item.'/Assets/images/Poster.png';
+  }
+  return $attr;
+}
 
 
 /*
  * Post-upload process for OAM Files
  */
 
-add_action('add_attachment','oamPostProcessor');
-function oamPostProcessor($post_ID) {
+add_action('add_attachment','wpoamr_add_attachment');
+function wpoamr_add_attachment($post_ID) {
   $file = get_attached_file($post_ID);
   $ext = pathinfo($file, PATHINFO_EXTENSION);
 
@@ -90,8 +88,8 @@ function oamPostProcessor($post_ID) {
  * Attachement deletion
  */
 
-add_action('delete_attachment','oamFolderRemover');
-function oamFolderRemover($post_ID) {
+add_action('delete_attachment','wpoamr_delete_attachment');
+function wpoamr_delete_attachment($post_ID) {
   $file = get_attached_file($post_ID);
   $ext = pathinfo($file, PATHINFO_EXTENSION);
 
@@ -116,8 +114,8 @@ function oamFolderRemover($post_ID) {
  * Shortcode for OAM rendering
  */
 
-add_shortcode('oam', 'shortcode_oam');
-function shortcode_oam($atts, $content = null) {
+add_shortcode('oam', 'wpoamr_shortcode_oam');
+function wpoamr_shortcode_oam($atts, $content = null) {
   // post using this animation
   global $post;
   $post_date  = $post->post_date;
@@ -148,8 +146,8 @@ function shortcode_oam($atts, $content = null) {
  * Server-side OAM rendering with an iFrame 
  */
 
-add_filter( 'the_content', 'oamRenderer' );
-function oamRenderer($content) {
+add_filter( 'the_content', 'wpoamr_the_content' );
+function wpoamr_the_content($content) {
   $pattern  = '~(<a href="([^"]*)/wp-content/([^"]*).oam">)([^<]*)(</a>)~';
   $domain   = get_bloginfo('url');
   $result   = preg_replace($pattern, '<iframe src="'.$domain.'/wp-content/$3/Assets/$4.html" class="wp-oam-renderer" data-oam="true" data-ratio=""></iframe>', $content);
@@ -159,25 +157,22 @@ function oamRenderer($content) {
   return $result;
 }
 
+
 /*
- * Remove recursively a directory
+ * Removes recursively a directory
+ * Source: http://www.php.net/manual/fr/function.rmdir.php#92050
  */
 
-function deleteDirectory($dir) {
-    if (!file_exists($dir)) return true;
-    if (!is_dir($dir)) return unlink($dir);
-    foreach (scandir($dir) as $item) {
-        if ($item == '.' || $item == '..') continue;
-        if (!deleteDirectory($dir.DIRECTORY_SEPARATOR.$item)) return false;
-    }
-    return rmdir($dir);
-}
-
-
-
-
-
-
-
-
+function deleteDirectory($dir) { 
+  if (!file_exists($dir)) return true; 
+  if (!is_dir($dir) || is_link($dir)) return unlink($dir); 
+  foreach (scandir($dir) as $item) { 
+    if ($item == '.' || $item == '..') continue; 
+    if (!deleteDirectory($dir . "/" . $item)) { 
+      chmod($dir . "/" . $item, 0777); 
+      if (!deleteDirectory($dir . "/" . $item)) return false; 
+    }; 
+  } 
+  return rmdir($dir); 
+} 
 
