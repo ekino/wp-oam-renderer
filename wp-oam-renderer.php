@@ -5,10 +5,9 @@ Plugin URI: https://github.com/ekino/wp-oam-renderer
 Description: Adds .oam / Adobe Edge Animate support in Media Library + front-office rendering using a dedicated shortcode
 Author: Ekino
 Author URI: http://www.ekino.com
-Version: 0.2
+Version: 0.3
 
 TODO:
-- move from exec("unzip") to a cross platform solution
 - refator code...
 */
 
@@ -63,7 +62,16 @@ function wpoamr_add_attachment($post_ID) {
     $out      = basename($filename, ".oam");
 
     // unzip file in the same directory
-    exec("unzip $file -d $dir/$out", $result, $returnval);
+    // source: http://stackoverflow.com/questions/8889025/unzip-a-file-with-php
+    $zip = new ZipArchive;
+    $res = $zip->open($file);
+    if ($res === TRUE) {
+      // extract it to the path we determined above
+      $zip->extractTo("$dir/$out");
+      $zip->close();
+    } else {
+      echo "ERROR: can't open $file";
+    }
 
     // getting config.xml
     $xml_config   = simplexml_load_file($dir.'/'.$out.'/config.xml');  
