@@ -24,7 +24,6 @@ function wpoamr_upload_mimes($mimes) {
   return $mimes;
 }
 
-
 /*
  * Displays icon from 'Poster.png' to OAM files
  * Only works in "Media > Library", not in "Post > Edit > Add Media"
@@ -41,7 +40,6 @@ function wpoamr_wp_get_attachment_image_attributes($attr, $attachment = null) {
   }
   return $attr;
 }
-
 
 /*
  * Post-upload process for OAM Files
@@ -94,11 +92,9 @@ function wpoamr_add_attachment($post_ID) {
   } 
 }
 
-
 /*
  * Attachement deletion
  */
-
 add_action('delete_attachment','wpoamr_delete_attachment');
 function wpoamr_delete_attachment($post_ID) {
   $file = get_attached_file($post_ID);
@@ -120,11 +116,9 @@ function wpoamr_delete_attachment($post_ID) {
   }
 }
 
-
 /*
  * Shortcode for OAM rendering
  */
-
 add_shortcode('oam', 'wpoamr_shortcode_oam');
 function wpoamr_shortcode_oam($atts, $content = null) {
   // post using this animation
@@ -143,15 +137,112 @@ function wpoamr_shortcode_oam($atts, $content = null) {
     $pathinfo   = pathinfo($attach->guid);
     $item       = $pathinfo['filename'];
     $path       = $pathinfo['dirname'];
+
+    // Respect height parameters
+    if($atts['height']){
+        $height = $atts['height'];
+        
     // calculate proportional height
-    $height     = (int) $atts['width'] * (int) $meta['height'][0] / (int) $meta['width'][0];
+    } else { 
+        $height = (int) $atts['width'] * (int) $meta['height'][0] / (int) $meta['width'][0];
+    }
     // return the ouput
-    return '<iframe src="'.$path.'/'.$item.'/Assets/'.$attach->post_title.'.html" width="'.$atts['width'].'" height="'.$height.'"></iframe>';
+    return '<img src="'.$path.'/'.$item.'/Assets/images/Poster.png" style="margin-left:-'.((int) $meta['width'][0]/2).'px; margin-top:-'.((int) $meta['height'][0]/2).'px;"/>'
+            .'<iframe src="'.$path.'/'.$item.'/Assets/'.$attach->post_title.'.html" width="'.$atts['width'].'" height="'.$height.'"></iframe>';
   } else {
     return '[OAM ERROR => An id must be provided]';
   }
 }
 
+add_shortcode('oamjs', 'wpoamr_shortcode_oamjs');
+function wpoamr_shortcode_oamjs($atts, $content = null) {
+    // post using this animation
+    global $post;
+    $post_date  = $post->post_date;
+    // id attribute is required
+    if ($atts['idfull'] || $atts['idsmall']) {
+        // default $atts values
+        $atts       = shortcode_atts(array(
+            'idfull'      => '',
+            'idsmall'      => '',
+            'width'   => 960,
+            'height'  => '',
+        ), $atts);
+
+        // animation 1 metadata
+        $attach1             = get_post($atts['idfull']);
+        $meta1               = get_post_meta($atts['idfull']);
+        $pathinfo1           = pathinfo($attach1->guid);
+        $item1               = $pathinfo1['filename'];
+        $baseUrl1            = $pathinfo1['dirname'];
+        $basePath1           = pathinfo(get_attached_file($attach1->ID), PATHINFO_DIRNAME);
+        $posterFileName1     = getPosterFileName($basePath1.'/'.$item1.'/Assets/images/');
+
+        // animation 2 metadata
+        $attach2             = get_post($atts['idsmall']);
+        $meta2               = get_post_meta($atts['idsmall']);
+        $pathinfo2           = pathinfo($attach2->guid);
+        $item2               = $pathinfo2['filename'];
+        $baseUrl2            = $pathinfo2['dirname'];
+        $basePath2           = pathinfo(get_attached_file($attach2->ID), PATHINFO_DIRNAME);
+        $posterFileName2     = getPosterFileName($basePath2.'/'.$item2.'/Assets/images/');
+
+        // Respect height parameters
+        if($atts['height']){
+            $height = $atts['height'];
+        }else{
+            // calculate proportional height
+            $height     = (int) $atts['width'] * (int) $meta['height'][0] / (int) $meta['width'][0];
+        }
+
+        $toPrint =     '<script type="text/javascript" class="oamjs-'. $atts['idfull'] .'">'.
+                        'if(!window.oamjs){'.
+                            'window.oamjs = [];'.
+                        '}'.
+                        'window.oamjs.push({'.
+                            'normal : {'.
+                                'id :"'. $atts['idfull'] .'",'.
+                                'path :"'.$baseUrl1.'/'.$item1.'/Assets/'.$attach1->post_title.'.html",'.
+                                'width :"'.$atts['width'].'",'.
+                                'height :"'.$height.'",'.
+                                'poster : "'.$baseUrl1.'/'.$item1.'/Assets/images/'.$posterFileName1.'"'.
+                            '},'.
+                            'xlarge : {'.
+                                'id :"'. $atts['idfull'] .'",'.
+                                'path :"'.$baseUrl1.'/'.$item1.'/Assets/'.$attach1->post_title.'.html",'.
+                                'width :"'.$atts['width'].'",'.
+                                'height :"'.$height.'",'.
+                                'poster : "'.$baseUrl1.'/'.$item1.'/Assets/images/'.$posterFileName1.'"'.
+                            '},'.
+                            'small : {'.
+                                'id :"'. $atts['idsmall'] .'",'.
+                                'path :"'.$baseUrl2.'/'.$item2.'/Assets/'.$attach2->post_title.'.html",'.
+                                'width :"'.$atts['width'].'",'.
+                                'height :"'.$height.'",'.
+                                'poster : "'.$baseUrl2.'/'.$item2.'/Assets/images/'.$posterFileName2.'"'.
+                            '}'.
+                        '});'.
+                    '</script>';
+        // return the ouput
+        return     $toPrint;
+    } else {
+        return '[OAMJS ERROR => An id must be provided]';
+    }
+
+}
+
+function getPosterFileName($dirName){
+    $sdir = scandir($dirName);
+    $file = null;
+    foreach($sdir as $item){
+        if(preg_match('/Poster\./', $item) != 0){
+            $file = $item;
+            break;
+        }
+    }
+
+    return $file;
+}
 
 /*
  * Server-side OAM rendering with an iFrame 
@@ -167,7 +258,6 @@ function wpoamr_the_content($content) {
   $result  .= "</script>";
   return $result;
 }
-
 
 /*
  * Removes recursively a directory
