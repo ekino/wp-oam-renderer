@@ -85,9 +85,12 @@ function wpoamr_add_attachment($post_ID) {
     $h    = $xml_edge->xpath('//edge:icon/@height');
 
     // adding meta to the oam file
-    add_post_meta($post_ID, 'width', (int) $w[0]); 
-    add_post_meta($post_ID, 'height', (int) $h[0]);
-
+    if (isset($w[0])) {
+        add_post_meta($post_ID, 'width', (int) $w[0]); 
+    }
+    if (isset($h[0])) {
+        add_post_meta($post_ID, 'height', (int) $h[0]);
+    }
   } 
 }
 
