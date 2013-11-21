@@ -1,5 +1,7 @@
 # wp-oam-renderer
 
+Wordpress plugin page: http://wordpress.org/plugins/wp-edge-animate-renderer-oam/
+
 Allows and renders OAM ([Adobe Edge Animate](http://html.adobe.com/fr/edge/animate/)) files in your [Wordpress](http://wordpress.org/) posts.
 
 ## How does it work?
