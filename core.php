@@ -141,7 +141,10 @@ function wp_oam_renderer_oam_short_code($attributes, $content = null)
     }
 
     $height = (int) $attributes['width'] * (int) $metadata['height'][0] / (int) $metadata['width'][0];
-    $height = $attributes['height'] ?: $height;
+
+    if (isset($attributes['height']) && $attributes['height']) {
+        $height = $attributes['height'];
+    }
 
     $pathinfo = pathinfo($attachment->guid);
 
@@ -171,4 +174,44 @@ function wp_oam_renderer_edit_fields($form_fields, $attachment) {
     }
 
     return $form_fields;
+}
+
+/**
+ * Returns attachment data array with first-time generated OAM icon file
+ *
+ * @param array $attachment
+ *
+ * @return array
+ */
+function wp_oam_renderer_prepare_attachment_for_js($attachment) {
+    if (substr($attachment['filename'], -3) == 'oam') {
+        $post = get_post($attachment['id']);
+        $pathinfo = pathinfo($post->guid);
+
+        $dirname = pathinfo(get_attached_file($attachment['id']), PATHINFO_DIRNAME);
+        $directory = sprintf('%s/%s/Assets/images', $dirname, $pathinfo['filename']);
+
+        $filename = wp_oam_renderer_get_poster_filename($directory);
+
+        if (!$filename) {
+            return $attachment;
+        }
+
+        $width  = 55;
+        $height = 55;
+
+        $info = pathinfo($filename);
+
+        $iconFile = sprintf('%s-%sx%s.%s', $info['filename'], $width, $height, $info['extension']);
+        $iconFilepath = sprintf('%s/%s', $directory, $iconFile);
+
+        if (!file_exists($iconFilepath)) {
+            image_resize(sprintf('%s/%s', $directory, $filename), $width, $height, true, null, $directory, 100);
+        }
+
+        $baseUrl = sprintf('%s/%s/Assets/images', $pathinfo['dirname'], $pathinfo['filename']);
+        $attachment['icon'] = sprintf('%s/%s', $baseUrl, $iconFile);
+    }
+
+    return $attachment;
 }
