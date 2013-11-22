@@ -5,7 +5,7 @@ Plugin URI: https://github.com/ekino/wp-oam-renderer
 Description: Adds .oam / Adobe Edge Animate support in Media Library + front-office rendering using a dedicated shortcode
 Author: Ekino
 Author URI: http://www.ekino.com
-Version: 1.0
+Version: 1.1
 */
 
 require_once 'core.php';
@@ -36,3 +36,9 @@ add_action('delete_attachment', 'wp_oam_renderer_delete_attachment');
  * Short code for OAM rendering
  */
 add_shortcode('oam', 'wp_oam_renderer_oam_short_code');
+
+/**
+ * Displays HTML render code in "Insert media" window on post edit
+ */
+add_filter('attachment_fields_to_edit', 'wp_oam_renderer_edit_fields', 10, 2);
+

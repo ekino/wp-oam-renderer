@@ -150,3 +150,25 @@ function wp_oam_renderer_oam_short_code($attributes, $content = null)
 
     return $iframe;
 }
+
+/**
+ * Displays OAM short code in an input element on "Insert media" window on post edit
+ *
+ * @param array    $form_fields A form fields array
+ * @param |WP_Post $attachment  An attachment object
+ *
+ * @return array
+ */
+function wp_oam_renderer_edit_fields($form_fields, $attachment) {
+    if (substr($attachment->guid, -3) == 'oam') {
+        $shortcode = sprintf('[oam id="%s"]', $attachment->ID);
+
+        $form_fields['oam'] = array(
+            'label' => 'Embed OAM',
+            'input' => 'html',
+            'html'  => sprintf('<input id="oam-embed" name="oam-embed" type="text" value=\'%s\' />', $shortcode),
+        );
+    }
+
+    return $form_fields;
+}
